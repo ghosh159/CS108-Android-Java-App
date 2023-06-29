@@ -551,6 +551,50 @@
 
         <TableRow
             android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center_vertical">
+
+            <TextView
+                style="@style/style_normal_font"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:text="Wedge Prefix" />
+
+            <EditText
+                android:id="@+id/settingWedgePrefix"
+                style="@style/style_normal_font"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/my_edittext_background"
+                android:inputType="textNoSuggestions|textVisiblePassword"
+                android:maxLength="20" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center_vertical">
+
+            <TextView
+                style="@style/style_normal_font"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:text="Wedge Delimiter" />
+
+            <EditText
+                android:id="@+id/settingWedgeDelimiter"
+                style="@style/style_normal_font"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/my_edittext_background"
+                android:inputType="textNoSuggestions|textVisiblePassword"
+                android:maxLength="20" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical">
 

@@ -26,6 +26,8 @@ public class SettingAdminFragment extends CommonFragment {
     private CheckBox checkBoxTriggerReporting, checkBoxInventoryBeep, checkBoxInventoryVibrate, checkBoxSaveFileEnable, checkBoxSaveCloudEnable, checkBoxSaveNewCloudEnable, checkBoxSaveAllCloudEnable;
     private CheckBox checkBoxCsvColumnResBank, checkBoxCsvColumnEpcBank, checkBoxCsvColumnTidBank, checkBoxCsvColumnUserBank, checkBoxCsvColumnPhase, checkBoxCsvColumnChannel, checkBoxCsvColumnTime, checkBoxCsvColumnTimeZone, checkBoxCsvColumnLocation, checkBoxCsvColumnDirection, checkBoxCsvColumnOthers;
     private EditText editTextDeviceName, editTextCycleDelay, editTextTriggerReportingCount, editTextBeepCount, editTextVibrateTime, editTextVibrateWindow, editTextServer, editTextServerTimeout;
+    private EditText editTextWedgePrefix;
+    private EditText editTextWedgeDelimiter;
     private TextView textViewReaderModel;
     private Spinner spinnerQueryBattery, spinnerQueryRssi, spinnerQueryVibrateMode, spinnerSavingFormat;
     private Button buttonCSLServer, button;
@@ -39,6 +41,7 @@ public class SettingAdminFragment extends CommonFragment {
     int savingFormatSelect = -1;
     int csvColumnSelect = -1;
     String deviceName = "";
+    String wedgePrefix = ""; String wedgeDelimiter = "0A";
     long cycleDelay = -1; long cycleDelayMin = 0; long cycleDelayMax = 2000;
     int iBeepCount = -1; int iBeepCountMin = 1; int iBeepCountMax = 100;
     short sTriggerCount = -1, sTriggerCountMin = 1, sTriggerCountMax = 100;
@@ -63,6 +66,9 @@ public class SettingAdminFragment extends CommonFragment {
         textViewReaderModel = (TextView) getActivity().findViewById(R.id.settingAdminReaderModel);
         editTextDeviceName = (EditText) getActivity().findViewById(R.id.settingAdminDeviceName);
         editTextDeviceName.setBackgroundResource(R.drawable.my_edittext_background);
+        editTextWedgePrefix = (EditText) getActivity().findViewById(R.id.settingWedgePrefix);
+        editTextWedgeDelimiter = (EditText) getActivity().findViewById(R.id.settingWedgeDelimiter);
+
         editTextDeviceName.setHint("Name Pattern");
         InputFilter[] FilterArray = new InputFilter[1];
         FilterArray[0] = new InputFilter.LengthFilter(20);
@@ -326,6 +332,8 @@ public class SettingAdminFragment extends CommonFragment {
                         saveAllCloudEnable = checkBoxSaveAllCloudEnable.isChecked();
                         serverName = editTextServer.getText().toString();
                         iServerTimeout = Integer.parseInt(editTextServerTimeout.getText().toString());
+                        wedgePrefix = editTextWedgePrefix.getText().toString();
+                        wedgeDelimiter = editTextWedgeDelimiter.getText().toString();
                         settingUpdate();
                     } catch (Exception ex) {
                         Toast.makeText(MainActivity.mContext, R.string.toast_invalid_range, Toast.LENGTH_SHORT).show();
@@ -405,6 +413,8 @@ public class SettingAdminFragment extends CommonFragment {
             if (editTextVibrateWindow != null)   editTextVibrateWindow.setText(String.valueOf(MainActivity.mCs108Library4a.getVibrateWindow()));
             editTextServer.setText(MainActivity.mCs108Library4a.getServerLocation());
             editTextServerTimeout.setText(String.valueOf(MainActivity.mCs108Library4a.getServerTimeout()));
+            editTextWedgePrefix.setText(MainActivity.mCs108Library4a.getWedgePrefix());
+            editTextWedgeDelimiter.setText(MainActivity.mCs108Library4a.getWedgeDelimiter());
             if (updating == false) {
                 String name = MainActivity.mCs108Library4a.getBluetoothICFirmwareName();
                 if (name == null)   updating = true;
@@ -565,6 +575,22 @@ public class SettingAdminFragment extends CommonFragment {
                 sameSetting = false;
                 if (iServerTimeout < iServerTimeoutMin || iServerTimeout > iServerTimeoutMax) invalidRequest = true;
                 else if (MainActivity.mCs108Library4a.setServerTimeout(iServerTimeout) == false)
+                    invalidRequest = true;
+            }
+        }
+        if (invalidRequest == false && editTextWedgePrefix != null) {
+            String wedgePf = MainActivity.mCs108Library4a.getWedgePrefix(); if (wedgePf == null) wedgePrefix = "";
+            if (wedgePf.matches(wedgePrefix) == false || sameCheck == false) {
+                sameSetting = false;
+                if (MainActivity.mCs108Library4a.setWedgePrefix(wedgePrefix) == false)
+                    invalidRequest = true;
+            }
+        }
+        if (invalidRequest == false && editTextWedgeDelimiter != null) {
+            String wedgeDel = MainActivity.mCs108Library4a.getWedgeDelimiter(); if (wedgeDel == null) wedgeDelimiter = "0A";
+            if (wedgeDel.matches(wedgeDelimiter) == false || sameCheck == false) {
+                sameSetting = false;
+                if (MainActivity.mCs108Library4a.setWedgeDelimiter(wedgeDelimiter) == false)
                     invalidRequest = true;
             }
         }

@@ -594,6 +594,10 @@ public class Cs108Library4A extends Cs108Connector {
                                 serverLocation = dataArray[1];
                             } else if (dataArray[0].matches("serverTimeout")) {
                                 serverTimeout = Integer.valueOf(dataArray[1]);
+                            } else if (dataArray[0].matches(("wedgePrefix"))) {
+                                wedgePrefix = dataArray[1];
+                            } else if (dataArray[0].matches("wedgeDelimiter")) {
+                                wedgeDelimiter = dataArray[1];
 
                             } else if (dataArray[0].matches("barcode2TriggerMode")) {
                                 if (dataArray[1].matches("true")) barcode2TriggerMode = true;
@@ -691,6 +695,8 @@ public class Cs108Library4A extends Cs108Connector {
             outData = "saveAllCloudEnable," + String.valueOf(getSaveAllCloudEnable() + "\n"); stream.write(outData.getBytes()); appendToLog("outData = " + outData);
             outData = "serverLocation," + getServerLocation() + "\n"; stream.write(outData.getBytes()); appendToLog("outData = " + outData);
             outData = "serverTimeout," + String.valueOf(getServerTimeout() +"\n"); stream.write(outData.getBytes()); appendToLog("outData = " + outData);
+            outData = "wedgePrefix," + getWedgePrefix() + "\n"; stream.write(outData.getBytes()); appendToLog("outData = " + outData);
+            outData = "wedgeDelimiter," + String.valueOf(getWedgeDelimiter() +"\n"); stream.write(outData.getBytes()); appendToLog("outData = " + outData);
 
             outData = "barcode2TriggerMode," + String.valueOf(barcode2TriggerMode +"\n"); stream.write(outData.getBytes()); appendToLog("outData = " + outData);
 
@@ -2354,6 +2360,24 @@ public class Cs108Library4A extends Cs108Connector {
     }
     @Keep public boolean setServerLocation(String serverLocation) {
         this.serverLocation = serverLocation;
+        return true;
+    }
+
+    String wedgePrefix = "";
+    @Keep public String getWedgePrefix() {
+        return wedgePrefix;
+    }
+    @Keep public boolean setWedgePrefix(String prefix) {
+        this.wedgePrefix = prefix;
+        return true;
+    }
+
+    String wedgeDelimiter = "0A";
+    @Keep public String getWedgeDelimiter() {
+        return wedgeDelimiter;
+    }
+    @Keep public boolean setWedgeDelimiter(String delimiter) {
+        this.wedgeDelimiter = delimiter;
         return true;
     }
 

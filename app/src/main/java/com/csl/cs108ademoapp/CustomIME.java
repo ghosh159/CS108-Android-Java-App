@@ -79,7 +79,22 @@ public class CustomIME extends InputMethodService {
                         if (matched == false && strEpc != null) {
                             epcArrayList.add(strEpc);
                             InputConnection ic = getCurrentInputConnection();
-                            ic.commitText(strEpc + "\n", 1);
+
+                            //ic.commitText(strEpc + "\n", 1);
+                            String prefix = MainActivity.mCs108Library4a.getWedgePrefix();
+                            String delimiterHex = MainActivity.mCs108Library4a.getWedgeDelimiter();
+                            String newStrEpc = prefix + strEpc;
+                            //check if delimiter string is valid hex string
+                            if ((delimiterHex.length() % 2 == 0) && delimiterHex.matches("^[0-9a-fA-F]+$"))  {
+                                StringBuilder output = new StringBuilder();
+                                for (int i = 0; i < delimiterHex.length(); i+=2) {
+                                    String str = delimiterHex.substring(i, i+2);
+                                    output.append((char)Integer.parseInt(str, 16));
+                                }
+                                newStrEpc+=output;
+                            }
+
+                            ic.commitText(newStrEpc, 1);
                         }
                     }
                 }
