@@ -1,11 +1,20 @@
 package com.csl.cs108ademoapp.fragments;
 
 import android.app.Activity;
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,7 +29,9 @@ import android.widget.Spinner;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.csl.cs108library4a.ReaderDevice;
 
+import com.csl.cs108ademoapp.CustomDrawableView;
 import com.csl.cs108ademoapp.CustomMediaPlayer;
 import com.csl.cs108ademoapp.InventoryRfidTask;
 import com.csl.cs108ademoapp.SelectTag;
@@ -29,12 +40,17 @@ import com.csl.cs108ademoapp.R;
 import com.csl.cs108library4a.Cs108Library4A;
 import com.csl.cs108library4a.ReaderDevice;
 
-public class InventoryRfidSearchFragment extends CommonFragment {
+public class InventoryRfidSearchFragment extends CommonFragment implements SensorEventListener {
     double dBuV_dBm_constant = MainActivity.csLibrary4A.dBuV_dBm_constant;
     final int labelMin = -90;
     final int labelMax = -10;
+    private Sensor accelerometer;
+    private Sensor gyroscope;
+    private Sensor magnetometer;
+
 
     SelectTag selectTag;
+    private SensorManager sensorManager;
     private ProgressBar geigerProgress;
     private CheckBox checkBoxGeigerTone;
     private SeekBar seekGeiger;
@@ -50,14 +66,34 @@ public class InventoryRfidSearchFragment extends CommonFragment {
 
     private boolean started = false;
     int thresholdValue = 0;
-
+    RFIDLocalization rfidLocalization;
     private InventoryRfidTask geigerSearchTask;
+    private Sensor rotationVectorSensor;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         super.onCreateView(inflater, container, savedInstanceState, true);
+        sensorManager = (SensorManager) getActivity().getSystemService(Context.SENSOR_SERVICE);
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        rotationVectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+
         return inflater.inflate(R.layout.fragment_geiger_search, container, false);
     }
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        // Directly reference your CustomDrawableView
+        CustomDrawableView directionIndicator = view.findViewById(R.id.directionIndicator);
+
+        // Since directionIndicator is already an instance of CustomDrawableView,
+        // you don't need to create a new instance or set it as a background.
+
+        // Set any other initial settings for your drawable or other views here...
+    }
+
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
@@ -79,6 +115,7 @@ public class InventoryRfidSearchFragment extends CommonFragment {
 
         geigerProgress = (ProgressBar) getActivity().findViewById(R.id.geigerProgress);
         checkBoxGeigerTone = (CheckBox) getActivity().findViewById(R.id.geigerToneCheck);
+        rfidLocalization = new RFIDLocalization();
 
         final ReaderDevice tagSelected = MainActivity.tagSelected;
         if (tagSelected != null) {
@@ -167,13 +204,14 @@ public class InventoryRfidSearchFragment extends CommonFragment {
                 if (rssi > thresholdValue && checkBoxGeigerTone.isChecked()) {
                     if (alerting == false)  {
                         alerting = true;
-                        mHandler.removeCallbacks(mAlertRunnable);
-                        mHandler.post(mAlertRunnable);
-                        if (DEBUG) MainActivity.csLibrary4A.appendToLog("afterTextChanged(): mAlertRunnable starts");
-                    }
-                }
+        mHandler.removeCallbacks(mAlertRunnable);
+        mHandler.post(mAlertRunnable);
+
+        if (DEBUG) MainActivity.csLibrary4A.appendToLog("afterTextChanged(): mAlertRunnable starts");
+    }
+}
             }
-        });
+                    });
         geigerRunTime = (TextView) getActivity().findViewById(R.id.geigerRunTime);
         geigerTagGotView = (TextView) getActivity().findViewById(R.id.geigerTagGot);
         geigerVoltageLevelView = (TextView) getActivity().findViewById(R.id.geigerVoltageLevel);
@@ -193,12 +231,19 @@ public class InventoryRfidSearchFragment extends CommonFragment {
     @Override
     public void onResume() {
         super.onResume();
+        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, rotationVectorSensor, SensorManager.SENSOR_DELAY_NORMAL);
+
         setNotificationListener();
     }
 
     @Override
     public void onPause() {
         MainActivity.csLibrary4A.setNotificationListener(null);
+        sensorManager.unregisterListener(this);
+
         super.onPause();
     }
 
@@ -214,6 +259,8 @@ public class InventoryRfidSearchFragment extends CommonFragment {
 
     public InventoryRfidSearchFragment() {
         super("InventoryRfidSearchFragment");
+
+
     }
 
     double alertRssi; boolean alerting = false; long alertRssiUpdateTime;
@@ -300,5 +347,45 @@ public class InventoryRfidSearchFragment extends CommonFragment {
                 null, null, geigerTagRssiView, null,
                 geigerRunTime, geigerTagGotView, geigerVoltageLevelView, null, button, rfidRateView);
         geigerSearchTask.execute();
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+/*        switch (event.sensor.getType()) {
+            case Sensor.TYPE_ACCELEROMETER:
+                Log.d("SensorData", "Accelerometer: x=" + event.values[0] + " y=" + event.values[1] + " z=" + event.values[2]);
+                break;
+            case Sensor.TYPE_GYROSCOPE:
+                Log.d("SensorData", "Gyroscope: x=" + event.values[0] + " y=" + event.values[1] + " z=" + event.values[2]);
+                break;
+   *//*         case Sensor.TYPE_MAGNETIC_FIELD:
+                Log.d("SensorData", "Magnetometer: x=" + event.values[0] + " y=" + event.values[1] + " z=" + event.values[2]);
+                break;*//*
+        }*/
+        if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
+            float[] rotationMatrix = new float[9];
+            float[] orientationValues = new float[3];
+
+            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+            SensorManager.getOrientation(rotationMatrix, orientationValues);
+            /*            double measuredRSSI = 0;*/
+            float azimuth = orientationValues[0];
+            float pitch = orientationValues[1];
+            float roll = orientationValues[2];
+            /*      measuredRSSI = Double.parseDouble(geigerTagRssiView.getText().toString());*/
+
+            double[] result = rfidLocalization.update(alertRssi, rotationMatrix);
+            Log.d("result", "estimated angle" + result[0] + "estimated distance" + result[1]);
+            /*            Log.d("RotationVector", "Azimuth: " + azimuth + ", Pitch: " + pitch + ", Roll: " + roll);}*/
+        }
+
+    }
+
+
+
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int i) {
+
     }
 }
