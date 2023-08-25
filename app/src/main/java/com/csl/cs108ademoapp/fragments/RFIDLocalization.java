@@ -5,7 +5,6 @@ import java.util.Random;
 
 public class RFIDLocalization {
 
-
     private static final int NUM_PARTICLES = 1000;
     private ArrayList<Particle> particles = new ArrayList<>();
     private Random random = new Random();
@@ -16,7 +15,7 @@ public class RFIDLocalization {
 
     private void initializeParticles() {
         for (int i = 0; i < NUM_PARTICLES; i++) {
-            particles.add(new Particle(randomPosition(), randomPosition()));
+            particles.add(new Particle(randomPosition(), randomPosition(), randomRotation()));
         }
     }
 
@@ -45,13 +44,17 @@ public class RFIDLocalization {
     }
 
     private double getEstimatedDistance(double measuredRSSI) {
-        double measuredPower = -59; // Replace with the RSSI value at 1 meter distance
-        double n = 2; // Path-loss exponent, change according to your environment
+        double measuredPower = -59;
+        double n = 2;
         return Math.pow(10, (measuredPower - measuredRSSI) / (10 * n));
     }
 
     private double randomPosition() {
-        return random.nextDouble() * 100;  // Assuming a 100x100 area for simplicity
+        return random.nextDouble() * 100;
+    }
+
+    private double randomRotation() {
+        return random.nextDouble() * 2 * Math.PI;
     }
 
     class Particle {
@@ -59,27 +62,19 @@ public class RFIDLocalization {
         double rotation;
         double weight;
 
-        Particle(double x, double y) {
+        Particle(double x, double y, double rotation) {
             this.x = x;
             this.y = y;
-            this.rotation = randomRotation();
+            this.rotation = rotation;
             this.weight = 1.0 / NUM_PARTICLES;
         }
 
         void updateWeight(double measuredRSSI, float[] rotationMatrix) {
-            // Update the weight based on the difference between measured and estimated values.
-            // For simplicity, we're using only the first element of the rotation matrix.
-            // The weight is updated based on how close the particle's rotation is to the measured rotation.
-            weight = 1.0 / (Math.abs(rotationMatrix[0] - rotation) + 1);
-        }
-
-
-        double estimateRSSI(double x, double y) {
-            return -Math.sqrt(x * x + y * y);
-        }
-
-        double randomRotation() {
-            return random.nextDouble() * 2 * Math.PI;  // Random rotation between 0 and 2*PI
+            double estimatedRSSI = -Math.sqrt(x * x + y * y);
+            double diffRSSI = Math.abs(measuredRSSI - estimatedRSSI);
+            double diffRotation = Math.abs(rotationMatrix[0] - rotation);
+            this.weight = Math.exp(-diffRSSI) * Math.exp(-diffRotation);
         }
     }
+
 }
