@@ -1,80 +1,58 @@
 package com.csl.cs108ademoapp.fragments;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Random;
 
 public class RFIDLocalization {
+    private static final int WINDOW_SIZE = 5;  // Size of the moving average window
+    private Queue<Double> rssiWindow = new LinkedList<>();
+    private double prevRSSI = 0;  // Initialize with a reasonable value
+    private double prevAngle = 0;  // Initialize with a starting angle
+    private double estimatedDistance = 0;
+    private double velocityX = 0;
+    private double velocityY = 0;
 
-    private static final int NUM_PARTICLES = 1000;
-    private ArrayList<Particle> particles = new ArrayList<>();
-    private Random random = new Random();
-
-    public RFIDLocalization() {
-        initializeParticles();
-    }
-
-    private void initializeParticles() {
-        for (int i = 0; i < NUM_PARTICLES; i++) {
-            particles.add(new Particle(randomPosition(), randomPosition(), randomRotation()));
+    // Update the estimated angle and distance based on the new RSSI reading, rotation matrix, and linear acceleration
+    public double[] update(double measuredRSSI, float[] rotationMatrix, double linearAccelerationX, double linearAccelerationY, double deltaTime) {
+        // Update the moving average of the RSSI
+        if (rssiWindow.size() >= WINDOW_SIZE) {
+            rssiWindow.poll();
         }
-    }
+        rssiWindow.add(measuredRSSI);
+        double avgRSSI = rssiWindow.stream().mapToDouble(Double::doubleValue).average().orElse(0);
 
-    public double[] update(double measuredRSSI, float[] rotationMatrix) {
-        executeSCANCommand(measuredRSSI, rotationMatrix);
-        double estimatedAngle = getEstimatedAngle();
-        double estimatedDistance = getEstimatedDistance(measuredRSSI);
+        // Update velocity based on linear acceleration and time delta
+        velocityX += linearAccelerationX * deltaTime;
+        velocityY += linearAccelerationY * deltaTime;
 
-        return new double[]{estimatedAngle, estimatedDistance};
-    }
+        // Convert the rotation matrix to an angle (assuming rotationMatrix[0] is the angle in radians)
+        double currentAngle = rotationMatrix[0];
 
-    private void executeSCANCommand(double measuredRSSI, float[] rotationMatrix) {
-        for (Particle particle : particles) {
-            particle.updateWeight(measuredRSSI, rotationMatrix);
-        }
-    }
+        double rssiRateOfChange = avgRSSI - prevRSSI;
+        double angleRateOfChange = currentAngle - prevAngle;
 
-    private double getEstimatedAngle() {
-        double totalWeight = 0;
-        double weightedAngleSum = 0;
-        for (Particle particle : particles) {
-            totalWeight += particle.weight;
-            weightedAngleSum += particle.rotation * particle.weight;
-        }
-        return weightedAngleSum / totalWeight;
-    }
-
-    private double getEstimatedDistance(double measuredRSSI) {
-        double measuredPower = -59;
-        double n = 2;
-        return Math.pow(10, (measuredPower - measuredRSSI) / (10 * n));
-    }
-
-    private double randomPosition() {
-        return random.nextDouble() * 100;
-    }
-
-    private double randomRotation() {
-        return random.nextDouble() * 2 * Math.PI;
-    }
-
-    class Particle {
-        double x, y;
-        double rotation;
-        double weight;
-
-        Particle(double x, double y, double rotation) {
-            this.x = x;
-            this.y = y;
-            this.rotation = rotation;
-            this.weight = 1.0 / NUM_PARTICLES;
+        // If the RSSI is increasing and the angle is changing, assume the tag is in that direction
+        if (rssiRateOfChange > 0 && angleRateOfChange != 0) {
+            prevAngle = currentAngle;
         }
 
-        void updateWeight(double measuredRSSI, float[] rotationMatrix) {
-            double estimatedRSSI = -Math.sqrt(x * x + y * y);
-            double diffRSSI = Math.abs(measuredRSSI - estimatedRSSI);
-            double diffRotation = Math.abs(rotationMatrix[0] - rotation);
-            this.weight = Math.exp(-diffRSSI) * Math.exp(-diffRotation);
-        }
+        // Calculate the relative angle by which the device needs to rotate to point towards the RFID tag
+        double relativeAngle = prevAngle - currentAngle;
+
+        // Update the estimated distance
+        estimatedDistance = getEstimatedDistance(avgRSSI);
+
+        prevRSSI = avgRSSI;
+
+        return new double[]{relativeAngle, estimatedDistance};
     }
 
+    // Function to convert RSSI to distance
+    private double getEstimatedDistance(double avgRSSI) {
+        double measuredPower = -59;  // Replace with a configurable value
+        double n = 2;  // Replace with a configurable value
+        return Math.pow(10, (measuredPower - avgRSSI) / (10 * n));
+    }
 }

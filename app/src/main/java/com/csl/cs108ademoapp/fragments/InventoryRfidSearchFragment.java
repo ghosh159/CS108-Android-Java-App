@@ -69,6 +69,7 @@ public class InventoryRfidSearchFragment extends CommonFragment implements Senso
     RFIDLocalization rfidLocalization;
     private InventoryRfidTask geigerSearchTask;
     private Sensor rotationVectorSensor;
+    private Sensor linear_Acceleration_Sensor;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -78,6 +79,7 @@ public class InventoryRfidSearchFragment extends CommonFragment implements Senso
         gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         rotationVectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        linear_Acceleration_Sensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
 
         return inflater.inflate(R.layout.fragment_geiger_search, container, false);
     }
@@ -235,6 +237,7 @@ public class InventoryRfidSearchFragment extends CommonFragment implements Senso
         sensorManager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this, rotationVectorSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, linear_Acceleration_Sensor, SensorManager.SENSOR_DELAY_NORMAL);
 
         setNotificationListener();
     }
@@ -349,36 +352,38 @@ public class InventoryRfidSearchFragment extends CommonFragment implements Senso
         geigerSearchTask.execute();
     }
 
-    @Override
+    private long lastUpdateTime = 0;  // To calculate deltaTime
+    private double[] linearAcceleration = new double[3];  // To store linear acceleration values
+
     public void onSensorChanged(SensorEvent event) {
-/*        switch (event.sensor.getType()) {
-            case Sensor.TYPE_ACCELEROMETER:
-                Log.d("SensorData", "Accelerometer: x=" + event.values[0] + " y=" + event.values[1] + " z=" + event.values[2]);
-                break;
-            case Sensor.TYPE_GYROSCOPE:
-                Log.d("SensorData", "Gyroscope: x=" + event.values[0] + " y=" + event.values[1] + " z=" + event.values[2]);
-                break;
-   *//*         case Sensor.TYPE_MAGNETIC_FIELD:
-                Log.d("SensorData", "Magnetometer: x=" + event.values[0] + " y=" + event.values[1] + " z=" + event.values[2]);
-                break;*//*
-        }*/
+        long currentTime = System.currentTimeMillis();
+        long deltaTime = currentTime - lastUpdateTime;
+        lastUpdateTime = currentTime;
+
         if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
             float[] rotationMatrix = new float[9];
             float[] orientationValues = new float[3];
 
             SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
             SensorManager.getOrientation(rotationMatrix, orientationValues);
-            /*            double measuredRSSI = 0;*/
+
             float azimuth = orientationValues[0];
             float pitch = orientationValues[1];
             float roll = orientationValues[2];
-            /*      measuredRSSI = Double.parseDouble(geigerTagRssiView.getText().toString());*/
 
-            double[] result = rfidLocalization.update(alertRssi, rotationMatrix);
-            Log.d("result", "estimated angle" + result[0] + "estimated distance" + result[1]);
-            /*            Log.d("RotationVector", "Azimuth: " + azimuth + ", Pitch: " + pitch + ", Roll: " + roll);}*/
+            // Assuming alertRssi is the current RSSI value you have
+            double[] result = rfidLocalization.update(alertRssi, rotationMatrix, linearAcceleration[0], linearAcceleration[1], deltaTime);
+
+            double angleInDegrees = Math.toDegrees(result[0]);  // Convert from radians to degrees
+            Log.d("result", "estimated angle: " + angleInDegrees + ", estimated distance: " + result[1]);
+
+
+        } else if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
+            linearAcceleration[0] = event.values[0];
+            linearAcceleration[1] = event.values[1];
+            linearAcceleration[2] = event.values[2];
+            Log.d("SensorData", "Linear Acceleration: x=" + linearAcceleration[0] + " y=" + linearAcceleration[1] + " z=" + linearAcceleration[2]);
         }
-
     }
 
 
