@@ -1,20 +1,21 @@
 package com.csl.cs108ademoapp.fragments;
 
-import java.util.ArrayList;
+/*import java.util.ArrayList;*/
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Random;
 
 public class RFIDLocalization {
-    private static final int WINDOW_SIZE = 5;  // Size of the moving average window
+
+    private static final int WINDOW_SIZE = 5;
     private Queue<Double> rssiWindow = new LinkedList<>();
-    private double prevRSSI = 0;  // Initialize with a reasonable value
-    private double prevAngle = 0;  // Initialize with a starting angle
+    private double prevRSSI = Double.NEGATIVE_INFINITY;
+    private double bestAngle = 0;
+    private double bestRSSI = Double.POSITIVE_INFINITY;
     private double estimatedDistance = 0;
     private double velocityX = 0;
     private double velocityY = 0;
 
-    // Update the estimated angle and distance based on the new RSSI reading, rotation matrix, and linear acceleration
     public double[] update(double measuredRSSI, float[] rotationMatrix, double linearAccelerationX, double linearAccelerationY, double deltaTime) {
         // Update the moving average of the RSSI
         if (rssiWindow.size() >= WINDOW_SIZE) {
@@ -27,32 +28,33 @@ public class RFIDLocalization {
         velocityX += linearAccelerationX * deltaTime;
         velocityY += linearAccelerationY * deltaTime;
 
-        // Convert the rotation matrix to an angle (assuming rotationMatrix[0] is the angle in radians)
-        double currentAngle = rotationMatrix[0];
+        // Extract yaw (azimuth) from rotation matrix
+        double currentAngle = Math.atan2(rotationMatrix[1], rotationMatrix[0]);
 
-        double rssiRateOfChange = avgRSSI - prevRSSI;
-        double angleRateOfChange = currentAngle - prevAngle;
-
-        // If the RSSI is increasing and the angle is changing, assume the tag is in that direction
-        if (rssiRateOfChange > 0 && angleRateOfChange != 0) {
-            prevAngle = currentAngle;
+        // Update best angle and best RSSI
+        if (avgRSSI < bestRSSI) {
+            bestRSSI = avgRSSI;
+            bestAngle = currentAngle;
         }
 
-        // Calculate the relative angle by which the device needs to rotate to point towards the RFID tag
-        double relativeAngle = prevAngle - currentAngle;
+        // Calculate the relative angle
+        double relativeAngle = bestAngle - currentAngle;
 
-        // Update the estimated distance
-        estimatedDistance = getEstimatedDistance(avgRSSI);
+        // Update the estimated distance based on RSSI and velocity
+        estimatedDistance = getEstimatedDistance(avgRSSI, Math.sqrt(velocityX * velocityX + velocityY * velocityY));
 
         prevRSSI = avgRSSI;
 
         return new double[]{relativeAngle, estimatedDistance};
     }
 
-    // Function to convert RSSI to distance
-    private double getEstimatedDistance(double avgRSSI) {
+    // Function to convert RSSI and velocity to distance
+    private double getEstimatedDistance(double avgRSSI, double velocityMagnitude) {
         double measuredPower = -59;  // Replace with a configurable value
         double n = 2;  // Replace with a configurable value
-        return Math.pow(10, (measuredPower - avgRSSI) / (10 * n));
+        double basicDistance = Math.pow(10, (measuredPower - avgRSSI) / (10 * n));
+
+        // Modify the estimated distance based on the velocity magnitude
+        return basicDistance * (1 + 0.1 * velocityMagnitude);
     }
 }

@@ -44,6 +44,7 @@ public class InventoryRfidSearchFragment extends CommonFragment implements Senso
     double dBuV_dBm_constant = MainActivity.csLibrary4A.dBuV_dBm_constant;
     final int labelMin = -90;
     final int labelMax = -10;
+    CustomDrawableView directionIndicator;
     private Sensor accelerometer;
     private Sensor gyroscope;
     private Sensor magnetometer;
@@ -88,7 +89,7 @@ public class InventoryRfidSearchFragment extends CommonFragment implements Senso
         super.onViewCreated(view, savedInstanceState);
 
         // Directly reference your CustomDrawableView
-        CustomDrawableView directionIndicator = view.findViewById(R.id.directionIndicator);
+        directionIndicator = view.findViewById(R.id.directionIndicator);
 
         // Since directionIndicator is already an instance of CustomDrawableView,
         // you don't need to create a new instance or set it as a background.
@@ -360,6 +361,7 @@ public class InventoryRfidSearchFragment extends CommonFragment implements Senso
         long deltaTime = currentTime - lastUpdateTime;
         lastUpdateTime = currentTime;
 
+        directionIndicator.setActiveSegment(0);
         if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
             float[] rotationMatrix = new float[9];
             float[] orientationValues = new float[3];
